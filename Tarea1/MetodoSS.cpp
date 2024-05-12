@@ -1,30 +1,11 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include "estructuras.cpp"
 
 constexpr int MAX_POINTS = 100;
 constexpr int MAX_CLUSTERS = 10;
 constexpr int MAX_CHILDREN = 10;
-
-struct Point {
-    double x, y;
-
-    // Calcula la distancia euclidiana entre dos puntos
-    static double distance(const Point& a, const Point& b) {
-        return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-    }
-
-    // Método para imprimir un punto
-    void print() const {
-        std::cout << "(" << x << ", " << y << ")";
-    }
-
-    // Constructor por defecto
-    Point() : x(0), y(0) {}
-
-    // Constructor con parámetros
-    Point(double x, double y) : x(x), y(y) {}
-};
 
 // Nodo para el M-tree
 struct Node {
