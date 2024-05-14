@@ -24,11 +24,6 @@ struct Point {
     }
 };
 
-// Calcular la distancia euclidiana entre dos puntos
-    static double distance(const Point& a, const Point& b) {
-        return std::sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
-    }
-
 
 struct MTreeNode {
     Point p;               // Punto que representa el nodo
@@ -52,6 +47,18 @@ struct MTreeNode {
     void setRadius(double r) {
         cr = r;
     }
+
+    // Actualiza el radio cobertor basado en los hijos actuales
+    void updateCoveringRadius() {
+        cr = 0;  // Resetear el radio cobertor
+        for (auto child : children) {
+            double dist = Point::distance(this->p, child->p) + child->cr;
+            if (dist > cr) {
+                cr = dist;  // Actualizar si la distancia calculada es mayor
+            }
+        }
+    }
+
 };
 
 
