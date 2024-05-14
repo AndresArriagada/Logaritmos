@@ -2,6 +2,8 @@
 #include <cmath>
 #include <algorithm>
 #include "estructuras.cpp"
+#include <limits>
+#include <vector>
 
 constexpr int MAX_POINTS = 100;
 constexpr int MAX_CLUSTERS = 10;
@@ -50,18 +52,50 @@ struct Node {
 };
 
 // Prototipos de funciones
-void cluster(const Point* points, int numPoints, Point clusters[MAX_CLUSTERS][MAX_POINTS], int& numClusters, int clusterSizes[MAX_CLUSTERS], int minSize, int maxSize);
+void findClosestPair(const std::vector<std::vector<Point>>& clusters, int& idx1, int& idx2);
+void cluster(const Point* points, int numPoints, std::vector<std::vector<Point>>& clusters, int minSize, int maxSize);
 Node* buildMTree(const Point* points, int numPoints, int minSize, int maxSize);
 void findMedoidAndRadius(const Point* points, int numPoints, Point& medoid, double& radius);
+void printMTree(Node* node, int level = 0);
 
 // Implementación de funciones
 
-void cluster(const Point* points, int numPoints, Point clusters[MAX_CLUSTERS][MAX_POINTS], int& numClusters, int clusterSizes[MAX_CLUSTERS], int minSize, int maxSize) {
-    // Implementar lógica de clustering basada en la descripción
-    // Placeholder simple que coloca todos los puntos en un solo cluster
-    numClusters = 1;
-    std::copy(points, points + numPoints, clusters[0]);
-    clusterSizes[0] = numPoints;
+void findClosestPair(const std::vector<std::vector<Point>>& clusters, int& idx1, int& idx2) {
+    double minDistance = std::numeric_limits<double>::max();
+    for (int i = 0; i < clusters.size(); ++i) {
+        for (int j = i + 1; j < clusters.size(); ++j) {
+            Point medoid1, medoid2;
+            double radius1, radius2;
+            findMedoidAndRadius(clusters[i].data(), clusters[i].size(), medoid1, radius1);
+            findMedoidAndRadius(clusters[j].data(), clusters[j].size(), medoid2, radius2);
+            double distance = Point::distance(medoid1, medoid2);
+            if (distance < minDistance) {
+                minDistance = distance;
+                idx1 = i;
+                idx2 = j;
+            }
+        }
+    }
+}
+
+void cluster(const Point* points, int numPoints, std::vector<std::vector<Point>>& clusters, int minSize, int maxSize) {
+    clusters.clear();
+    if (numPoints == 0) return;
+
+    // Distribuir los puntos en varios clusters sin exceder maxSize
+    std::vector<Point> currentCluster;
+    for (int i = 0; i < numPoints; ++i) {
+        currentCluster.push_back(points[i]);
+        if (currentCluster.size() == maxSize) {
+            clusters.push_back(currentCluster);
+            currentCluster.clear();
+        }
+    }
+    if (!currentCluster.empty()) {
+        clusters.push_back(currentCluster);
+    }
+
+    std::cout << "Clusters created: " << clusters.size() << std::endl;
 }
 
 void findMedoidAndRadius(const Point* points, int numPoints, Point& medoid, double& radius) {
@@ -88,34 +122,44 @@ void findMedoidAndRadius(const Point* points, int numPoints, Point& medoid, doub
 }
 
 Node* buildMTree(const Point* points, int numPoints, int minSize, int maxSize) {
+    std::cout << "Building MTree with numPoints: " << numPoints << std::endl;
+    
     if (numPoints <= maxSize) {
+        std::cout << "Creating leaf node for " << numPoints << " points." << std::endl;
         Point medoid;
         double radius;
         findMedoidAndRadius(points, numPoints, medoid, radius);
         return new Node(medoid, radius, points, numPoints);
-    } else {
-        Point clusters[MAX_CLUSTERS][MAX_POINTS];
-        int clusterSizes[MAX_CLUSTERS] = {0};
-        int numClusters = 0;
-
-        cluster(points, numPoints, clusters, numClusters, clusterSizes, minSize, maxSize);
-
-        Node* children[MAX_CLUSTERS] = {nullptr};
-        for (int i = 0; i < numClusters; ++i) {
-            children[i] = buildMTree(clusters[i], clusterSizes[i], minSize, maxSize);
-        }
-
-        Point medoid;
-        double radius;
-        Point medoides[MAX_CLUSTERS];
-        for (int i = 0; i < numClusters; ++i) {
-            medoides[i] = children[i]->medoid;
-        }
-        findMedoidAndRadius(medoides, numClusters, medoid, radius);
-
-        return new Node(medoid, radius, children, numClusters);
     }
+
+    // Caso recursivo: si el número de puntos excede el tamaño máximo, se procede a clusterizar.
+    std::vector<std::vector<Point>> clusters;
+    cluster(points, numPoints, clusters, minSize, maxSize);
+
+    Node* children[MAX_CHILDREN];
+    int numChildren = 0;
+
+    std::cout << "Clusters created: " << clusters.size() << std::endl;
+
+    // Construye un árbol para cada cluster
+    for (auto& cluster : clusters) {
+        children[numChildren++] = buildMTree(cluster.data(), cluster.size(), minSize, maxSize);
+    }
+
+    // Calcular el medoide y el radio para el nodo interno usando los medoides de los hijos.
+    std::vector<Point> medoids;
+    for (int i = 0; i < numChildren; ++i) {
+        medoids.push_back(children[i]->medoid);
+    }
+    Point medoid;
+    double radius;
+    findMedoidAndRadius(medoids.data(), medoids.size(), medoid, radius);
+
+    std::cout << "Creating internal node with " << numChildren << " children." << std::endl;
+    
+    return new Node(medoid, radius, children, numChildren);
 }
+
 
 void deleteTreeSS(Node* node) {
     if (node == nullptr) return;  // Caso base de la recursión
@@ -151,4 +195,39 @@ std::pair<std::vector<Point>, int> searchMTreeSS(Node* node, const Point& target
     return {foundPoints, entries};  // Devolver los puntos encontrados y el contador de entradas
 }
 
+
+
+void printMTree(Node* node, int level) {
+    if (!node) return;
+
+    std::cout << std::string(level * 2, ' ') << "Nivel " << level << ": ";
+    std::cout << "Medoide (" << node->medoid.x << ", " << node->medoid.y << "), ";
+    std::cout << "Radio " << node->radius << std::endl;
+
+    if (node->numChildren == 0) {
+        std::cout << std::string(level * 2, ' ') << "  Puntos:" << std::endl;
+        for (int i = 0; i < node->numPoints; ++i) {
+            std::cout << std::string(level * 2 + 2, ' ') << "(" << node->points[i].x << ", " << node->points[i].y << ")" << std::endl;
+        }
+    } else {
+        for (int i = 0; i < node->numChildren; ++i) {
+            printMTree(node->children[i], level + 1);
+        }
+    }
+}
+
+int main() {
+    Point points[] = {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 7}, {8, 8}, {9, 9}};
+    int numPoints = sizeof(points) / sizeof(points[0]);
+    int minSize = 2;
+    int maxSize = 3;
+
+    Node* root = buildMTree(points, numPoints, minSize, maxSize);
+
+    printMTree(root);
+
+    delete root;
+
+    return 0;
+}
 
