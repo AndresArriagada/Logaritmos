@@ -143,16 +143,25 @@ public:
 
 
         // Crea un nuevo nodo raíz para este nivel y agrega los samples como hijos
-        MTreeNode* node = new MTreeNode(Point(0.5, 0.5)); // Nodo con punto central arbitrario
+        MTreeNode* root = new MTreeNode(Point(0.5, 0.5)); // Nodo con punto central arbitrario
         for (auto sample : samples) {
             if (!sample->children.empty()) { // Asegura que solo se añadan samples con hijos
-                node->addChild(sample);
+                root->addChild(sample);
             } else {
                 delete sample; // Elimina los samples sin hijos para evitar fugas de memoria
             }
         }
 
-        return node; // Retorna el nodo raíz del subárbol construido
+
+         // Llama a updateAllCoveringRadii para asegurar que todos los radios cobertores estén correctamente establecidos
+        if (root) {
+            updateAllCoveringRadius(root);
+        }
+
+
+
+
+        return root; // Retorna el nodo raíz del subárbol construido
     }
 
     int calculateHeight(MTreeNode* node) {
@@ -164,5 +173,50 @@ public:
         return 1 + maxChildHeight;
     }
 
+    void updateAllCoveringRadius(MTreeNode* node) {
+        if (!node) return;  // Salida de la recursión si el nodo es nulo
+
+        // Si el nodo no tiene hijos, es una hoja y el radio cobertor debería ser 0
+        if (node->children.empty()) {
+            node->cr = 0;  // Las hojas tienen radio cobertor cero
+        } else {
+            // Si el nodo tiene hijos, primero actualiza recursivamente los hijos
+            for (auto child : node->children) {
+                updateAllCoveringRadius(child);
+            }
+            // Luego actualiza el radio cobertor del nodo actual
+            node->updateCoveringRadius();
+    }
+}
+
 
 };
+
+
+std::pair<std::vector<Point>, int> searchMTreeCP(MTreeNode* node, const Point& target, double range, int& entries) {
+    std::vector<Point> foundPoints;
+    if (!node) return {foundPoints, entries};  // Si el nodo es nulo, devuelve lista vacía y contador actual
+
+    entries++;  // Incrementar el contador de entradas cada vez que se accede a un nodo
+
+    double distToNodePoint = Point::distance(node->p, target);
+
+    // Verificar si el objetivo está dentro del radio cobertor más el rango de búsqueda
+    if (distToNodePoint <= node->cr + range) {
+        // Si no tiene hijos, es un nodo hoja
+        if (node->children.empty()) {
+            if (distToNodePoint <= range) {
+                foundPoints.push_back(node->p);  // Añadir el punto del nodo si está dentro del rango
+            }
+        } else {
+            // Buscar recursivamente en los nodos hijos
+            for (MTreeNode* child : node->children) {
+                auto [childFound, childEntries] = searchMTreeCP(child, target, range, entries);
+                foundPoints.insert(foundPoints.end(), childFound.begin(), childFound.end());
+                entries = childEntries;  // Actualizar el contador de entradas con el valor retornado por la recursión
+            }
+        }
+    }
+
+    return {foundPoints, entries};  // Devolver los puntos encontrados y el contador de entradas
+}

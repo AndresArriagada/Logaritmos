@@ -32,9 +32,9 @@ struct Node {
     void print(int level = 0) const {
         std::cout << std::string(level * 2, ' ') << "Medoid: ";
         medoid.print();
-        std::cout << ", Radius: " << radius << "\n";
+        std::cout << ", Radius: " << radius << " ";
         if (numPoints > 0) {
-            std::cout << std::string(level * 2, ' ') << "Points:\n";
+            std::cout << std::string(level * 2, ' ') << "Points: ";
             for (int i = 0; i < numPoints; ++i) {
                 std::cout << std::string(level * 2 + 2, ' ');
                 points[i].print();
@@ -117,18 +117,38 @@ Node* buildMTree(const Point* points, int numPoints, int minSize, int maxSize) {
     }
 }
 
-int main() {
-    std::cout << "Starting program...\n";
+void deleteTreeSS(Node* node) {
+    if (node == nullptr) return;  // Caso base de la recursión
 
-    Point points[] = {{0, 0}, {1, 1}};
-    int numPoints = sizeof(points) / sizeof(points[0]);
+    for (int i = 0; i < node->numChildren; ++i) {
+        deleteTreeSS(node->children[i]);  // Llamada recursiva para cada hijo
+    }
 
-    // Crear un nodo con los puntos
-    Node node(Point(0.5, 0.5), 1.0, points, numPoints);
-
-    // Llamar al método print para mostrar el contenido del nodo
-    node.print();
-
-    std::cout << "Program finished.\n";
-    return 0;
+    delete node;  // Eliminar el nodo actual después de sus hijos
 }
+
+
+std::pair<std::vector<Point>, int> searchMTreeSS(Node* node, const Point& target, double range, int& entries) {
+    std::vector<Point> foundPoints;
+    if (node == nullptr) return {foundPoints, entries};
+
+    entries++;  // Incrementar el contador de entradas cada vez que se accede a un nodo
+
+    if (node->numChildren == 0) {  // Si es un nodo hoja
+        for (int i = 0; i < node->numPoints; ++i) {
+            if (Point::distance(node->points[i], target) <= range) {
+                foundPoints.push_back(node->points[i]);  // Añadir punto si está dentro del rango
+            }
+        }
+    } else {  // Si es un nodo interno
+        for (int i = 0; i < node->numChildren; ++i) {
+            auto [childFound, childEntries] = searchMTreeSS(node->children[i], target, range, entries);
+            foundPoints.insert(foundPoints.end(), childFound.begin(), childFound.end());
+            entries = childEntries;  // Actualizar el contador de entradas con el valor retornado por la recursión
+        }
+    }
+
+    return {foundPoints, entries};  // Devolver los puntos encontrados y el contador de entradas
+}
+
+
