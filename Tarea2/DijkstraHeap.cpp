@@ -1,138 +1,109 @@
 #include <vector>
 #include <stdexcept>
 #include <climits>
+#include "DijkstraHeap.h"
 
 using namespace std;
 
-// Definición de la clase Nodo
-class Nodo {
-public:
-    int valor;
-    vector<pair<Nodo*, int>> aristas; // Vector de pares (nodo, peso)
+Nodo::Nodo(int v) : valor(v) {}
 
-    Nodo(int v) : valor(v) {}
-};
+void Grafo::agregarNodo(int valor) {
+    Nodo* nuevoNodo = new Nodo(valor);
+    nodos.push_back(nuevoNodo);
+}
 
-// Definición de la clase Grafo
-class Grafo {
-public:
-    vector<Nodo*> nodos;
+void Grafo::agregarArista(Nodo* nodoOrigen, Nodo* nodoDestino, int peso) {
+    nodoOrigen->aristas.push_back(std::make_pair(nodoDestino, peso));
+}
 
-    // Función para agregar un nodo al grafo
-    void agregarNodo(int valor) {
-        Nodo* nuevoNodo = new Nodo(valor);
-        nodos.push_back(nuevoNodo);
+std::vector<Nodo*> Grafo::obtenerNodos() {
+    return nodos;
+}
+
+Heap::Heap(std::vector<int>& distances) : maxSize(distances.size() + 1), size(0), nodeToIndex(distances.size() + 1, -1) {
+    heap.resize(maxSize);
+    for (int i = 0; i < distances.size(); ++i) {
+        heap[i + 1] = std::make_pair(distances[i], nullptr);
+        nodeToIndex[i + 1] = i + 1;
     }
-
-    // Función para agregar una arista entre dos nodos con un peso dado
-    void agregarArista(Nodo* nodoOrigen, Nodo* nodoDestino, int peso) {
-        nodoOrigen->aristas.push_back(make_pair(nodoDestino, peso));
+    for (int i = size / 2; i >= 1; --i) {
+        siftDown(i);
     }
+}
 
-    // Función para obtener la lista de nodos del grafo
-    vector<Nodo*> obtenerNodos() {
-        return nodos;
+bool Heap::empty() const {
+    return size == 0;
+}
+
+void Heap::insert(std::pair<int, Nodo*> p) {
+    if (size >= maxSize - 1) {
+        throw std::runtime_error("Heap is full!");
     }
+    size++;
+    heap[size] = p;
+    nodeToIndex[p.second->valor] = size;
+    siftUp(size);
+}
 
-    // Función para obtener las aristas de un nodo dado
-    vector<pair<Nodo*, int>> obtenerAristasDeNodo(Nodo* nodo) {
-        return nodo->aristas;
+std::pair<int, Nodo*> Heap::extractMin() {
+    if (size == 0) {
+        throw std::runtime_error("Heap is empty!");
     }
-};
+    std::pair<int, Nodo*> result = heap[1];
+    heap[1] = heap[size];
+    nodeToIndex[heap[1].second->valor] = 1;
+    size--;
+    siftDown(1);
+    nodeToIndex[result.second->valor] = -1;
+    return result;
+}
 
-class Heap {
-private:
-    vector<pair<int, Nodo*>> heap; // (distancia, nodo)
-    int maxSize;
-    int size;
-    vector<int> nodeToIndex; // vector para acceso directo desde el nodo al par que lo representa
+void Heap::decreaseKey(int node, int newDist) {
+    int i = nodeToIndex[node];
+    heap[i].first = newDist;
+    siftUp(i);
+}
 
-    int parent(int i) {
-        return i / 2;
+int Heap::parent(int i) const {
+    return i / 2;
+}
+
+int Heap::leftChild(int i) const {
+    return 2 * i;
+}
+
+int Heap::rightChild(int i) const {
+    return 2 * i + 1;
+}
+
+void Heap::siftUp(int i) {
+    while (i > 1 && heap[parent(i)].first > heap[i].first) {
+        swap(i, parent(i));
+        i = parent(i);
     }
+}
 
-    int leftChild(int i) {
-        return 2 * i;
+void Heap::siftDown(int i) {
+    int minIndex = i;
+    int left = leftChild(i);
+    if (left <= size && heap[left].first < heap[minIndex].first) {
+        minIndex = left;
     }
+    int right = rightChild(i);
+    if (right <= size && heap[right].first < heap[minIndex].first) {
+        minIndex = right;
+    }
+    if (i != minIndex) {
+        swap(i, minIndex);
+        siftDown(minIndex);
+    }
+}
 
-    int rightChild(int i) {
-        return 2 * i + 1;
-    }
-
-    void siftUp(int i) {
-        while (i > 1 && heap[parent(i)].first > heap[i].first) {
-            swap(i, parent(i));
-            i = parent(i);
-        }
-    }
-
-    void siftDown(int i) {
-        int minIndex = i;
-        int left = leftChild(i);
-        if (left <= size && heap[left].first < heap[minIndex].first) {
-            minIndex = left;
-        }
-        int right = rightChild(i);
-        if (right <= size && heap[right].first < heap[minIndex].first) {
-            minIndex = right;
-        }
-        if (i != minIndex) {
-            swap(i, minIndex);
-            siftDown(minIndex);
-        }
-    }
-
-    void swap(int i, int j) {
-        std::swap(heap[i], heap[j]);
-        nodeToIndex[heap[i].second->valor] = i;
-        nodeToIndex[heap[j].second->valor] = j;
-    }
-
-public:
-    Heap(vector<int>& distances) : maxSize(distances.size() + 1), size(distances.size()), nodeToIndex(distances.size() + 1, -1) {
-        heap.resize(distances.size() + 1);
-        for (int i = 0; i < distances.size(); ++i) {
-            heap[i + 1] = make_pair(distances[i], nullptr);
-            nodeToIndex[i] = i + 1;
-        }
-        for (int i = size / 2; i >= 1; --i) {
-            siftDown(i);
-        }
-    }
-
-    bool empty() const {
-        return size == 0;
-    }
-
-    void insert(pair<int, Nodo*> p) {
-        if (size == maxSize - 1) {
-            throw runtime_error("Heap is full!");
-        }
-        size++;
-        heap[size] = p;
-        nodeToIndex[p.second-> valor] = size;
-        siftUp(size);
-    }
-
-    pair<int, Nodo*> extractMin() {
-        if (size == 0) {
-            throw runtime_error("Heap is empty!");
-        }
-        pair<int, Nodo*> result = heap[1];
-        heap[1] = heap[size];
-        nodeToIndex[heap[1].second->valor] = 1;
-        size--;
-        siftDown(1);
-        nodeToIndex[result.second->valor] = -1;
-        return result;
-    }
-
-    void decreaseKey(int node, int newDist) {
-        int i = nodeToIndex[node];
-        heap[i].first = newDist;
-        siftUp(i);
-    }
-};
+void Heap::swap(int i, int j) {
+    std::swap(heap[i], heap[j]);
+    nodeToIndex[heap[i].second->valor] = i;
+    nodeToIndex[heap[j].second->valor] = j;
+}
 
 
 pair<vector<int>, vector<int>> DijkstraHeap(Grafo& grafo, int raiz){
