@@ -5,18 +5,14 @@
 #include <list>
 #include <vector>
 #include <limits>
+#include "DijkstraHeap.h"
+#include "DijkstraHeap.cpp"
 
 //Template de como se representan los pares
-template<typename Key, typename Value>
-
-//Clase que representa la estructura de Cola de Fibonacci
-class FibHeap {
-public:
-
-    //Definimos el nodo de la cola de fibonacci
+//Definimos el nodo de la cola de fibonacci
     struct FibNode{
-        Key key;        // La clave del nodo (utilizada para ordenar)
-        Value value;    // El valor asociado al nodo (en este caso, un identificador del nodo en el grafo)
+        int key;
+        Nodo* nodo;      //Nodo al que se esta representando con FibNode
         FibNode* parent;   // Puntero al nodo padre
         FibNode* child;    // Puntero a uno de los hijos del nodo
         FibNode* left;     // Puntero al nodo izquierdo en la lista de hermanos
@@ -24,8 +20,14 @@ public:
         int degree;     // Grado del nodo (número de hijos que tiene)
         bool mark;      // Indica si el nodo ha perdido un hijo desde la última vez que fue hecho hijo de otro nodo
 
-        FibNode(Key k, Value v) : key(k), value(v), parent(nullptr), child(nullptr), left(this), right(this), degree(0), mark(false) {}
+        FibNode(std::pair<int, Nodo*> p) : key(p.first), nodo(p.second), parent(nullptr), child(nullptr), left(this), right(this), degree(0), mark(false) {}
     };
+
+//Clase que representa la estructura de Cola de Fibonacci
+class FibHeap {
+public:
+
+    
 
 
     //Constructor por defecto de FibHeap
@@ -33,8 +35,8 @@ public:
 
 
     //Metodo de insercion:
-    FibNode* insert(Key key, Value value) {
-        FibNode* node = new FibNode(key, value);
+    FibNode* insert(std::pair<int, Nodo*> p) {
+        FibNode* node = new FibNode(p);
         if (!minNode) {
             minNode = node;
         } else {
@@ -42,7 +44,7 @@ public:
             node->right = minNode;
             node->left = minNode->left;
             minNode->left = node;
-            if (key < minNode->key) {
+            if (p.first < minNode->key) {
                 minNode = node;
             }
         }
@@ -77,7 +79,7 @@ public:
     }
 
     //Metodo que disminuye la llave para el nodo en caso que la nueva sea menor
-    void decreaseKey(FibNode* node, Key newKey) {
+    void decreaseKey(FibNode* node, int newKey) {
         if (newKey > node->key) {
             throw std::invalid_argument("New key is greater than current key.");
         }
@@ -226,6 +228,32 @@ private:
         }
     }
 
+
+    //Permite conectar dos arboles de la lista de raices en uno solo
+    void link(FibNode* y, FibNode* x) {
+        //Parte quitando al nodo y de la lista de nodos y agregandole X como padre
+        y->left->right = y->right;
+        y->right->left = y->left;
+        y->parent = x;
+
+        //si X no tiene hijos, entonces es el unico hijo de x y se agrega como tal
+        if (!x->child) {
+            x->child = y;
+            y->right = y->left = y;
+        } else {//en caso que si tenga hijos, agregamos y a la lista de hijos de x
+            y->left = x->child;
+            y->right = x->child->right;
+            x->child->right->left = y;
+            x->child->right = y;
+        }
+        //aumentamos el conteo de hijos de x y cambiamos la marca y a false
+        x->degree++;
+        y->mark = false;
+    }
+
 };
+
+
+std::pair<std::vector<int>, std::vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz);
 
 #endif
