@@ -101,19 +101,15 @@ class FibHeap {
         //Recibimos el nodo y el peso, para partir debemos crear el nodo de fibonacci que representa este nodo
         FibNode* nodo = new FibNode(p);
 
-        //Vemos si el conteo de nodos es 0, entonces estaria vacio y simplemente definimos este nuevo nodo como el minimo, aumentamos en 1 el contador y retornamos
-
-        if (nodeCount==0){
+        //Vemos si existe al menos un nodo, verificando si existe el minimo
+        if (minNode==nullptr){//en caso que no, definimos este como minimo y retornamos
             minNode=nodo;
             nodeCount++;
             return nodo;
         } else {//Si entra aca, es porque hay nodos en la cola
-            //Para agregarlo, lo uniremos entre 2 nodos a la izquierda del nodo minimo:
-            //Primero tomamos el puntero que apunta al nodo minimo desde la izquierda y lo apuntamos a nuestro nodo:
+            //Para agregarlo, lo uniremos a la izquierda del nodo minimo
             minNode -> left -> right = nodo;
-            //Ahora apuntamos el puntero izquierdo del nuevo nodo al nodo a la izquierda del nodo minimo:
             nodo -> left = minNode ->left;
-            //En este punto ya insertamos al nodo nuevo a la drecha del nodo que estaba a la izquierda del nodo minimo. Ahora queremos que el nodo minimo apunte al nuevo nodo y viceversa, de forma de cerrar nuestra lista doblemente conectada
             nodo -> right = minNode;
             minNode -> left = nodo;
 
@@ -158,29 +154,30 @@ class FibHeap {
                 cout<<child->nodo->valor << " " << valorNodo <<endl;
             }
 
-            minNode->left->right = minNode->child->right;
-            minNode->child->right->left = minNode->left;
-            minNode->child->right = minNode;
-            minNode->left = minNode->child->left;
+            //Unimos las dos listas
+            minNode->left->right = minNode->child->left;
+            minNode->child->left->right = minNode->left;
+            minNode->child->left = minNode;
+            minNode->left = minNode->child;
         }
         //Luego de haber sacado todos los hijos, eliminamos el nodo de la lista
         minNode->left->right = minNode->right;
         minNode->right->left = minNode->left;
 
         //Y finalmente asignamos el nuevo minimo
-        if (minNode == minNode->right) {
+        if (minNode == minNode->right) {//En caso de ser el unico nodo, entonces apuntamos al nullptr
             minNode = nullptr;
-        } else { //En caso que no sea el unico nodo, definimos un nuevo minimo y consolidamos el arbol para mantener la estructura y obtener el verdadero minimo
-            FibNode* oldMin = minNode;
-            minNode = minNode->right;
+        } else { //En caso que no sea el unico nodo, definimos un nuevo minimo arbitrario y consolidamos el arbol para asegurar que se mantenga la estructura y poder obtener el verdadero minimo
+            FibNode* oldMin = minNode; 
+            minNode = oldMin->right;
             consolidate();
         }
-        --nodeCount;
+        --nodeCount;//finalmente, disminuimos en 1 el conteo total de nodos
     }
 
     //union: une dos colas
     void unirColas(FibHeap& nueva) {
-        //Para unirlas, haremos algo similar a insertar un nodo. Insertaremos una lista dentro de la otra, de forma que al hacer los cambios de punteros resulte en tener una sola lista larga
+        //Para unir dos filas usaremos la misma logica de unir que se uso en deleteMin.
 
         //Lo primero es ver si la nueva cola esta vacia, si es asi no se hace nada
         if(nueva.nodeCount == 0) {return;}
@@ -194,23 +191,25 @@ class FibHeap {
             return;
             }
 
-        //si no es ninguna de estos, procedemos a hacer las inserciones.
+        //Ya habiendo cubierto los dos casos base, procedemos a la logica de dos colas no vacias
 
         else{
-            //Hacemos las modificaciones de los punteros
-            minNode -> left -> right = nueva.minNode -> right;
-            nueva.minNode -> right -> left = minNode -> left;
+            //Hacemos las modificaciones de los punteros de la misma forma que en delMin
+            minNode -> left -> right = nueva.minNode -> left;
+            nueva.minNode -> left -> right = minNode -> left;
+            nueva.minNode -> left = minNode;
             minNode -> left = nueva.minNode;
-            nueva.minNode->right = minNode;
             
             //verificamos el nuevo minimo
+            //Si el minimo de la nueva lista es menor, lo definimos como minimo global de la lista unida
             if(nueva.minNode -> distancia < minNode -> distancia) {
                 minNode = nueva.minNode;
             }
             
-            //sumamos los conteos
+            //sumamos la cantidad de nodos
             nodeCount += nueva.nodeCount;
-            //eliminamos los puntero y conteos de la nueva y retornamos
+
+            //eliminamos el puntero al nodo minimo y el total de nodos de la lista unida para eliminarla y retornamos
             nueva.minNode = nullptr;
             nueva.nodeCount = 0;
             return;
@@ -219,26 +218,32 @@ class FibHeap {
 
 
 
-    //funcion que disminuye el valor de la llave. Para poder ejecutarlo, es necesario tener el puntero al nodo que se quiere agregar
+    //Esta funcion recibe un nodo y un valor. Este valor es un intento de disminuir la llave. En caso que no sea menor que la llave actual, no hace nada. En caso que sea menor: lo cambia, en caso que no sea parte de la lista de raices y su raiz pasa a ser menor que la del padre lo corta para agregarlo, y verifica si es el nuevo minimo
     void decreaseKey(FibNode* node, int newKey) {
         //si la nueva llave es mayor que la distancia guardada, no hacemos nada
         if (newKey > node->distancia) {
             return;
         }
-        //si no, actualizamos el valor
+        //En caso que sea menor, lo cambiamos
         node->distancia = newKey;
 
         //Si tiene un padre, y al actualizar la distancia pasa a ser menor que la de este, entonces entra aca
-        if (node->parent && node->distancia < node -> parent->distancia) {
-            cut(node, node->parent);
-            //cascadingCut(node->parent);
-        }
+        if (node->parent !=nullptr) {//Si tiene padre
+            if (node->distancia < node -> parent-> distancia) {
+                FibNode* parent = node->parent;
+                cut(node, parent);
+                cascadingCut(parent);
 
-        //finalmente, verificamos si con esta nueva distancia pasa a se el minimo:
-        int nueva = node->distancia;
-        if(nueva < minNode->distancia) {
-            minNode = node;
+                //Si ahora es menor que el padre, entonces existe la posibilidad que sea el nuevo minimo. De ser asi, entonces verificamos para definirlo como el nuevo
+
+                //Lo guarde como nueva variable porque me estaba dando segmentation fault y queria ver en que acceso eras
+                int nueva = node->distancia;
+                if(nueva < minNode->distancia) {
+                    minNode = node;
+                }
+                }
         }
+        
         
     };
 
@@ -249,7 +254,6 @@ class FibHeap {
     }
 
     
-    private:
     //Puntero al nodo minimo
     FibNode* minNode;
     //Entero que representa cuantos nodos hay
@@ -269,12 +273,10 @@ class FibHeap {
         }
         parent->degree--;//disminuye en 1 el contador de hijos del padre
 
-        //Preparamos el nodo para agregarlo a la lista de raices
-        node->right = node->left = node;
         //Lo agregamos a la lista de raices
         minNode->left->right = node;
-        node->right = minNode;
         node->left = minNode->left;
+        node->right = minNode;
         minNode->left = node;
         //Quitamos el puntero al padre
         node->parent = nullptr;
@@ -315,7 +317,7 @@ class FibHeap {
         while (valorNodo != curr -> nodo -> valor){
             nodeList.push_back(curr);
             curr = curr->right;
-            cout<< valorNodo << " " << curr->nodo->valor<<endl;;
+             cout<< valorNodo << " " << curr->nodo->valor<<endl;;
         }
 
         //Usa la degreeTable para asegurar que no hay 2 arboles del mismo grado
@@ -380,7 +382,7 @@ class FibHeap {
     }
 
     
-    //Permite conectar dos arboles de la lista de raices en uno solo
+    //conecta Y de la lista de raices como hijo de x, que tambien estaria en la lista de raices
     void link(FibNode* y, FibNode* x) {
         //Parte quitando al nodo y de la lista de raices y agregandole X como padre
         y->left->right = y->right;
@@ -390,12 +392,13 @@ class FibHeap {
         //si X no tiene hijos, entonces es el unico hijo de x y se agrega como tal
         if (!x->child) {
             x->child = y;
-            y->right = y->left = y;
+            y->right = y;
+            y->left = y;
         } else {//en caso que si tenga hijos, agregamos y a la lista de hijos de x
-            y->left = x->child;
-            y->right = x->child->right;
-            x->child->right->left = y;
-            x->child->right = y;
+            x -> child -> left -> right = y;
+            y -> left = x -> child -> left;
+            x -> child -> left = y;
+            y -> right = x -> child; 
         }
         //aumentamos el grado de x en 1 y cambiamos la marca y a false
         x->degree++;
