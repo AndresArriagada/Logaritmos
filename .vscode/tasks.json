@@ -3,7 +3,7 @@
         {
             "type": "cppbuild",
             "label": "C/C++: g++-13 compilar archivo activo",
-            "command": "/usr/local/bin/g++-13",
+            "command": "/usr/bin/g++-13",
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
