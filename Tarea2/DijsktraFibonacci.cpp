@@ -41,6 +41,10 @@ using namespace chrono;
     right(this), 
     degree(0), 
     mark(false) {}
+
+    ~FibNode() {
+        delete nodo;  // Liberar el nodo asociado
+    }
 };    
 
 
@@ -51,6 +55,17 @@ class FibHeap {
     public:
     //Make: constructor de una cola vacia
     FibHeap() : minNode(nullptr), nodeCount(0) {};
+
+    ~FibHeap() {
+        clear();
+    }
+
+    void clear() {
+        if (minNode != nullptr) {
+            clear(minNode);
+            minNode = nullptr;
+        }
+    }
 
     //insert: agrega un nodo a la lista de raices. Ademas retorna la direccion del nodo
     FibNode* insert(pair<int,Nodo*> p) {
@@ -137,9 +152,7 @@ class FibHeap {
             //lo sacamos de la lista de raices
             minNode->left->right = minNode->right;
             minNode->right->left = minNode->left;
-            //Definimos un nodo arbitrario 
-            FibNode* oldMin = minNode; 
-            minNode = oldMin->right;
+            minNode = minNode->right;
             consolidate();
         }
         --nodeCount;//finalmente, disminuimos en 1 el conteo total de nodos
@@ -391,7 +404,19 @@ class FibHeap {
         y->mark = false;
     }
 
-
+    void clear(FibNode* node) {
+        if (node == nullptr) return;
+        FibNode* start = node;
+        do {
+            FibNode* temp = node;
+            if (node->child != nullptr) {
+                clear(node->child);
+            }
+            node = node->right;
+            delete temp->nodo;
+            delete temp;
+        } while (node != start);
+    }
 
 };
 
@@ -463,8 +488,8 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
            
         }
 
-        //Este ciclo se repite hasta que se vacie la estructura
     }
+
 
     //Ya habiendo recorrido toda la estructura, podemos entregar las listas de distancias y previos como resultado
 
