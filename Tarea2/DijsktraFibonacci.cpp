@@ -1,5 +1,6 @@
 //incluir imports
-
+#include "DijkstraHeap.h"
+#include "DijkstraHeap.cpp"
 #include <iostream>
 #include <chrono>
 #include <random>
@@ -11,51 +12,6 @@ using namespace std;
 using namespace chrono;
 
 
-
-
-//definiciones de estructuras y funciones
-//Nodo: Nodo del grafo base. Contiene un entero que representa su llave, y un vector
-//con las aristas que lo llevan a otros nodos
-class Nodo {
-public:
-    
-    int valor;
-    //Cada valor del vector representa una arista, la arista es un par en el cual el primer
-    //valor es un puntero al nodo que lo conecta, y el segundo valor es un entero que representa
-    //el peso de la arista
-    vector<pair<Nodo*, int>> aristas;
-
-    Nodo(int v) : valor(v) {} // Constructor
-};
-
-//Grafo: estructura base de entrada compuesta por nodos y conectados entre si por aristas con 
-//pesos. 
-class Grafo {
-public:
-    //vector que contiene los nodos
-    vector<Nodo*> nodos;
-
-
-    //Metodo para agregar un nodo. Recibe el valor del nodo y lo crea sin aristas. Finalmente lo agrega 
-    //a la lista de nodos
-    void agregarNodo(int valor) {
-        Nodo* nuevoNodo = new Nodo(valor);
-        nodos.push_back(nuevoNodo);
-    };
-    
-    
-    //Metodo para agregar una arista. Recibe los dos nodos que se van a conectar y el peso
-    void agregarArista(Nodo* nodoOrigen, Nodo* nodoDestino, int peso) {
-        //Solo lo hacemos en una direccion, ya que el no hacerlo dirigido se maneja en la 
-        //seccion del experimento
-        nodoOrigen->aristas.push_back(make_pair(nodoDestino, peso));
-    };
-    
-    //Metodo que retorna el vector de los nodos del grafo
-    vector<Nodo*> obtenerNodos() {
-        return nodos;
-    }
-};
 
 
 
@@ -562,13 +518,24 @@ void experimento() {
                     grafo.agregarArista(grafo.nodos[w], grafo.nodos[u], peso); // Hacerlo no dirigido
                 }
 
+                
                 // Medir tiempo de ejecución del algoritmo de Dijkstra
                 auto start = high_resolution_clock::now();
-                auto resultados = DijkstraFibHeap(grafo, 0); // Ejecutar Dijkstra desde el nodo 0
+                auto resultados = DijkstraHeap(grafo, 0); // Ejecutar Dijkstra desde el nodo 0
                 auto stop = high_resolution_clock::now();
                 auto duration = duration_cast<milliseconds>(stop - start);
 
-                std::cout << "Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << duration.count() << " milisegundos" << endl;
+                std::cout << "Tiempo para Heap 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << duration.count() << " milisegundos" << endl;
+
+
+                // Medir tiempo de ejecución del algoritmo de Dijkstra
+                auto start2 = high_resolution_clock::now();
+                auto resultados2 = DijkstraFibHeap(grafo, 0); // Ejecutar Dijkstra desde el nodo 0
+                auto stop2 = high_resolution_clock::now();
+                auto duration2 = duration_cast<milliseconds>(stop2 - start2);
+
+                std::cout << "Tiempo para Cola de Fibonacci 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << duration2.count() << " milisegundos" << endl;
+
             }
         }
     }
