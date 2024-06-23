@@ -131,36 +131,57 @@ class FibHeap {
         return minNode;
     }
 
+
+
+
+    
+
+
+
     //Metodo para eliminar el minimo de la cola
     void deleteMin() {
         //Caso de cola vacia
-        if (nodeCount==0) return;
+        if (minNode == nullptr) return;
 
         //Si tiene hijos, los movemos todos a la lista de raices
         if (minNode->child) {
-            //tomamos el hijo al que esta apuntando
-            FibNode* child = minNode->child;
-            FibNode* start = child;
+            
+            //Los moveremos uno por uno, en vez de la lista completa
+            while(minNode -> child != nullptr){
+                FibNode* child = minNode -> child;
+                //Lo quitamos de la lista primero, en caso que tenga hermanos
+                if (child-> right != child) {
+                    child -> left -> right = child -> right;
+                    child -> right -> left = child -> left;
+                    //movemos el cursor de hijo al de al lado
+                    minNode->child = child->right;
+                    //nos aseguramos que no existan ciclos cerrados o dobles
+                    child -> right = child;
+                    child -> left = child;
+                    
+                } else { //Si no tiene hermanos, entonces marcamos el child como nullptr ya que es el ultimo hijo
+                    minNode -> child = nullptr;
+                }   
 
-            do {
-                child->parent = nullptr;
-                child = child->right;
-            } while (child != start);
+                //Lo agregamos a la lista de raices usando el mismo codigo que insert
+                minNode -> left -> right = child;
+                child -> left = minNode ->left;
+                child -> right = minNode;
+                minNode -> left = child;
 
-            //Unimos las dos listas
-            minNode->left->right = minNode->child->left;
-            minNode->child->left->right = minNode->left;
-            minNode->child->left = minNode;
-            minNode->left = minNode->child;
+                //Y se repite el ciclo
+            }
         }
-        //Luego de haber sacado todos los hijos, eliminamos el nodo de la lista
-        minNode->left->right = minNode->right;
-        minNode->right->left = minNode->left;
-
-        //Y finalmente asignamos el nuevo minimo
-        if (minNode == minNode->right) {//En caso de ser el unico nodo, entonces apuntamos al nullptr
+        
+        //Ahora vemos si es el ultimo nodo en la lista de raices: 
+        if (minNode == minNode->right) {//En caso de ser el unico nodo, entonces apuntamos al nullptr y retornamos
             minNode = nullptr;
-        } else { //En caso que no sea el unico nodo, definimos un nuevo minimo arbitrario y consolidamos el arbol para asegurar que se mantenga la estructura y poder obtener el verdadero minimo
+            return;
+        } else { //En caso que no sea el unico nodo:
+            //lo sacamos de la lista de raices
+            minNode->left->right = minNode->right;
+            minNode->right->left = minNode->left;
+            //Definimos un nodo arbitrario 
             FibNode* oldMin = minNode; 
             minNode = oldMin->right;
             consolidate();
@@ -221,7 +242,7 @@ class FibHeap {
         node->distancia = newKey;
 
         //Si tiene un padre, y al actualizar la distancia pasa a ser menor que la de este, entonces entra aca
-        if (node->parent !=nullptr) {//Si tiene padre
+        if (node->parent != nullptr) {//Si tiene padre
             if (node->distancia < node -> parent-> distancia) {
                 FibNode* parent = node->parent;
                 cut(node, parent);
@@ -246,7 +267,7 @@ class FibHeap {
         return minNode == nullptr;
     }
 
-    
+    private:
     //Puntero al nodo minimo
     FibNode* minNode;
     //Entero que representa cuantos nodos hay
@@ -263,6 +284,9 @@ class FibHeap {
             if (parent->child == node) {//En caso que el parent este apuntando a este, lo apunta al siguiente
                 parent->child = node->right;
             }
+            //Aseguramos que no existen ciclos dobles
+            node->right = node;
+            node->left = node;
         }
         parent->degree--;//disminuye en 1 el contador de hijos del padre
 
@@ -294,26 +318,34 @@ class FibHeap {
 
     //Metodo de consolidacion del heap. Con esto nos aseguramos de mantener la estrucutura y preservar la eficiencia de la misma
     void consolidate() {
-        //Creamos una tabla de grados que puede recibir hasta 2^15 nodos
-        vector<FibNode*> degreeTable(15, nullptr);  
+        //Creamos una tabla de grados que puede recibir hasta 2^16 nodos
+        vector<FibNode*> degreeTable(16, nullptr);  
         
         //Creamos una lista de nodos
         list<FibNode*> nodeList;
         //partimos desde el nodo minimo
-        FibNode* curr = minNode;
-        //En esta parte agregamos todos los nodos a nodeList
-        FibNode* start = curr;
-        nodeList.push_back(curr);
-        curr = curr->right;
 
-        while (curr != start) {
+        //vamos a agregar todos los nodos a la lista de nodos, asi que podemos hacerlo de la siguiente manera:
+
+        while(minNode!=nullptr){
+            FibNode* curr = minNode;
+
+            if(curr -> right != curr){//si tiene hermanos, reconectamos la lista
+                curr -> left -> right = curr -> right;
+                curr -> right -> left = curr -> left;
+                minNode = curr -> right;
+                //Nos aseguramos que no existan ciclos no cerrados o dobles
+                curr -> right = curr;
+                curr -> left = curr;
+            } else { //si era el ultimo en la lista, definimos el puntero del minimo al nullptr
+                minNode = nullptr;
+            }
             nodeList.push_back(curr);
-            curr = curr->right;
         }
 
 
         //Usa la degreeTable para asegurar que no hay 2 arboles del mismo grado
-        for (auto& node : nodeList) {
+        for (FibNode* node : nodeList) {
             //X es el nodo que vamos a agregar y degree su grado
             FibNode* x = node;
             int degree = x->degree;
@@ -328,6 +360,8 @@ class FibHeap {
                 if (x->distancia > y->distancia) {
                     //agregamos a x como hijo de y, manteniendo la llave de y como raiz
                     link(x, y);
+                    //nos quedamos con y como el nuevo x
+                    x = y;
                 } else {
                     //agrega y como hijo de x
                     link(y, x);
@@ -344,9 +378,7 @@ class FibHeap {
 
 
         //Finalmente, ya teniendo la tabla de grados completa, reconstruimos la lista de raices de nuestra cola de fibonacci
-        //partimos con un puntero nulo
-        minNode = nullptr;
-        //recorremos toda la tabla
+        //recorremos toda la tabla de grados
         for (auto& node : degreeTable) {
             if (node) {
                 //vemos si el minnode es nulo
@@ -386,12 +418,12 @@ class FibHeap {
         y->left->right = y->right;
         y->right->left = y->left;
         y->parent = x;
+        y->left = y;
+        y->right = y;
 
         //si X no tiene hijos, entonces es el unico hijo de x y se agrega como tal
-        if (!x->child) {
+        if (x->child == nullptr) {
             x->child = y;
-            y->right = y;
-            y->left = y;
         } else {//en caso que si tenga hijos, agregamos y a la lista de hijos de x
             x -> child -> left -> right = y;
             y -> left = x -> child -> left;
@@ -448,6 +480,7 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
     while(!fibHeap.isEmpty()){
         //Extraemos el minimo y lo eliminamos de la cola
         FibNode* minNode = fibHeap.getMin();
+
         //Extraemos el nodo de adentro del FibNode
         Nodo* actual = minNode -> nodo;
         //eliminamos el minimo
@@ -471,6 +504,7 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
                 fibHeap.decreaseKey(node_map[vecino->valor], distancias[vecino->valor]);
                 //y esto se repite para cada arista del nodo actual
             }
+           
         }
 
         //Este ciclo se repite hasta que se vacie la estructura
@@ -491,22 +525,17 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
 
 
 void experimento() {
-    vector<int> sizes = {100}; // v = 2^10, 2^12, 2^14
-    vector<int> edgesPowers = {10}; // e = 2^16 a 2^22
+    vector<int> sizes = {1024, 4096, 16384}; // v = 2^10, 2^12, 2^14
+    vector<int> edgesPowers = {16, 17, 18, 19, 20, 21, 22}; // e = 2^16 a 2^22
     int repetitions = 2;
-    std::cout << "Inicio del experimento" << endl;
 
     for (int i : sizes) {
-        std::cout << "Experimento con tamaño:"<< i << endl;
         for (int exp : edgesPowers) {
             int e = 1 << exp; // Calcula 2^j aristas
-            
-            std::cout << "Con un numero de aristas:"<< e << endl;
 
             for (int r = 0; r < repetitions; ++r) {
                 Grafo grafo;
                 for (int n = 0; n < i; ++n) {
-                    //std::cout << "agregando nodo:" << n << endl;
                     grafo.agregarNodo(n);
                 }
 
@@ -519,7 +548,6 @@ void experimento() {
                 for (int n = 1; n < i; ++n) {
                     int u = dist(gen) % n; // Conectar con un nodo anterior
                     int peso = dist(gen) % 100 + 1;
-                    //std::cout << "Agregando Arista de peso: " << peso << " entre los nodos " << u << " y " << n << endl;
                     grafo.agregarArista(grafo.nodos[u], grafo.nodos[n], peso);
                     grafo.agregarArista(grafo.nodos[n], grafo.nodos[u], peso); // Hacerlo no dirigido
                 }
@@ -530,7 +558,6 @@ void experimento() {
                     int w = dist(gen);
                     while (u == w) { w = dist(gen); } // Evitar bucles
                     int peso = dist(gen) % 100 + 1;
-                    //std::cout << "Agregando Arista de peso: " << peso << " entre los nodos " << u << " y " << w << endl;
                     grafo.agregarArista(grafo.nodos[u], grafo.nodos[w], peso);
                     grafo.agregarArista(grafo.nodos[w], grafo.nodos[u], peso); // Hacerlo no dirigido
                 }
