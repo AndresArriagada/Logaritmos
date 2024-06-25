@@ -2,6 +2,7 @@
 #include "DijkstraHeap.h"
 #include "DijkstraHeap.cpp"
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <random>
 #include <vector>
@@ -481,24 +482,26 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
 
 
 void experimento() {
+    ofstream outFile("experiment_results.txt");
     vector<pair<int, int>> sizeToEdgePowers = {
-        {1024, 18}, // v = 2^10, j máximo = 18
-        {4096, 22}, // v = 2^12, j máximo = 22
+        //{1024, 18}, // v = 2^10, j máximo = 18
+        //{4096, 22}, // v = 2^12, j máximo = 22
         {16384, 22} // v = 2^14, j máximo = 22
     };
     int repetitions = 50;
 
+    outFile << "Nodos, Aristas, Repetición, Tiempo Binario (ms), Tiempo Fibonacci (ms)\n";
     for (auto& [i, maxExp] : sizeToEdgePowers) {
-        for (int exp = 16; exp <= maxExp; ++exp) { // Inicia en 16 siempre, pero termina en el máximo especificado para cada i
+        for (int exp = 16; exp <= maxExp; ++exp) {
             int e = 1 << exp; // Calcula 2^j aristas
+            long long sumBin = 0, sumFib = 0;  // Acumuladores para los tiempos
 
-            for (int r = 0; r < repetitions; ++r) {
+            for (int r = 1; r <= repetitions; ++r) {
                 Grafo grafo;
                 for (int n = 0; n < i; ++n) {
                     grafo.agregarNodo(n);
                 }
 
-                // Generar un grafo conexo
                 random_device rd;
                 mt19937 gen(rd());
                 uniform_int_distribution<> dist(0, i - 1);
@@ -519,22 +522,31 @@ void experimento() {
                     grafo.agregarArista(grafo.nodos[w], grafo.nodos[u], peso);
                 }
 
-                // Medir tiempo de ejecución de ambos algoritmos
-                auto startBin = high_resolution_clock::now();
-                auto resultadosBin = DijkstraHeap(grafo, 0);
-                auto stopBin = high_resolution_clock::now();
-                auto durationBin = duration_cast<milliseconds>(stopBin - startBin);
+                //auto startBin = high_resolution_clock::now();
+                //auto resultadosBin = DijkstraHeap(grafo, 0);
+                //auto stopBin = high_resolution_clock::now();
+                //auto durationBin = duration_cast<milliseconds>(stopBin - startBin).count();
+                //sumBin += durationBin;
 
                 auto startFib = high_resolution_clock::now();
                 auto resultadosFib = DijkstraFibHeap(grafo, 0);
                 auto stopFib = high_resolution_clock::now();
-                auto durationFib = duration_cast<milliseconds>(stopFib - startFib);
+                auto durationFib = duration_cast<milliseconds>(stopFib - startFib).count();
+                sumFib += durationFib;
+                cout << "Fibonacci - Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << durationFib << " ms" << endl;
 
-                cout << "Binario - Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << durationBin.count() << " ms" << endl;
-                cout << "Fibonacci - Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << durationFib.count() << " ms" << endl;
+                outFile << "2^" << log2(i) << ", 2^" << exp << ", " << r << ", "<< 0 << ", "<< durationFib << "\n";
             }
+            // Calcular promedios
+            double avgBin = double(sumBin) / repetitions;
+            double avgFib = double(sumFib) / repetitions;
+            outFile << "Promedio Binario: " << avgBin << " ms\n";
+            outFile << "Promedio Fibonacci: " << avgFib << " ms\n";
+            cout << "Promedio Binario para 2^" << log2(i) << " nodos y 2^" << exp << " aristas: " << avgBin << " ms\n";
+            cout << "Promedio Fibonacci para 2^" << log2(i) << " nodos y 2^" << exp << " aristas: " << avgFib << " ms\n";
         }
     }
+    outFile.close();
 }
 
 int main() {
