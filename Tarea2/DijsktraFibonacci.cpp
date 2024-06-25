@@ -558,6 +558,7 @@ void experimento() {
                 auto stopFib = high_resolution_clock::now();
                 auto durationFib = duration_cast<milliseconds>(stopFib - startFib).count();
                 sumFib += durationFib;
+                cout << "Binario - Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << durationBin << " ms" << endl;
                 cout << "Fibonacci - Tiempo para 2^" << log2(i) << " nodos y 2^" << exp << " aristas, rep " << (r + 1) << ": " << durationFib << " ms" << endl;
 
                 outFile << "2^" << log2(i) << ", 2^" << exp << ", " << r << ", "<< 0 << ", "<< durationFib << "\n";
