@@ -484,9 +484,9 @@ pair<vector<int>,vector<int>> DijkstraFibHeap(Grafo& grafo, int raiz){
 void experimento() {
     ofstream outFile("experiment_results.txt");
     vector<pair<int, int>> sizeToEdgePowers = {
-        //{1024, 18}, // v = 2^10, j máximo = 18
+        {1024, 18}, // v = 2^10, j máximo = 18
         //{4096, 22}, // v = 2^12, j máximo = 22
-        {16384, 22} // v = 2^14, j máximo = 22
+        //{16384, 22} // v = 2^14, j máximo = 22
     };
     int repetitions = 50;
 
@@ -522,11 +522,11 @@ void experimento() {
                     grafo.agregarArista(grafo.nodos[w], grafo.nodos[u], peso);
                 }
 
-                //auto startBin = high_resolution_clock::now();
-                //auto resultadosBin = DijkstraHeap(grafo, 0);
-                //auto stopBin = high_resolution_clock::now();
-                //auto durationBin = duration_cast<milliseconds>(stopBin - startBin).count();
-                //sumBin += durationBin;
+                auto startBin = high_resolution_clock::now();
+                auto resultadosBin = DijkstraHeap(grafo, 0);
+                auto stopBin = high_resolution_clock::now();
+                auto durationBin = duration_cast<milliseconds>(stopBin - startBin).count();
+                sumBin += durationBin;
 
                 auto startFib = high_resolution_clock::now();
                 auto resultadosFib = DijkstraFibHeap(grafo, 0);
